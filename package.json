@@ -1,0 +1,62 @@
+{
+  "name": "desktop",
+  "private": true,
+  "version": "0.0.0",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "electron": "electron electron/main.cjs",
+    "start": "concurrently \"npm run dev\" \"wait-on http://localhost:5180 && npm run electron\"",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "axios": "^1.16.1",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "tailwindcss": "^4.3.0",
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "com.logday.wfh",
+    "productName": "LogDay WFH Tracker",
+    "directories": {
+      "output": "dist-build"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LogDay WFH Tracker"
+    },
+    "extraResources": [
+      {
+        "from": "../agent/dist/wfh-agent",
+        "to": "wfh-agent",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  }
+}
