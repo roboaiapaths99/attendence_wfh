@@ -25,14 +25,13 @@ export default function Dashboard({
   onStopMonitoring,
   onCheckAgent,
   wellnessNudge,
-  setWellnessNudge
+  setWellnessNudge,
+  onScanStateChange
 }) {
   const [showFaceScan, setShowFaceScan] = useState(false);
   const [scanType, setScanType] = useState(null); // 'check-in' or 'check-out'
   const [stream, setStream] = useState(null);
   const videoRef = useRef(null);
-  const [previewStream, setPreviewStream] = useState(null);
-  const previewVideoRef = useRef(null);
 
   const [queueCount, setQueueCount] = useState(0);
   const [showSyncedBanner, setShowSyncedBanner] = useState(false);
@@ -69,46 +68,36 @@ export default function Dashboard({
     };
   }, []);
 
-  useEffect(() => {
-    let currentStream = null;
-    if (webcamPreview) {
-      navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
-        .then(s => {
-          currentStream = s;
-          setPreviewStream(s);
-          if (previewVideoRef.current) {
-            previewVideoRef.current.srcObject = s;
-          }
-        })
-        .catch(err => console.error("Preview camera access denied:", err));
-    } else {
-      if (previewStream) {
-        previewStream.getTracks().forEach(t => t.stop());
-        setPreviewStream(null);
-      }
-    }
-    return () => {
-      if (currentStream) {
-        currentStream.getTracks().forEach(t => t.stop());
-      }
-      if (previewStream) {
-        previewStream.getTracks().forEach(t => t.stop());
-      }
-    };
-  }, [webcamPreview]);
+
 
   // Handle opening the modal and starting the camera
   const handleStartScan = async (type) => {
     setScanType(type);
     setShowFaceScan(true);
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+    if (onScanStateChange) {
+      onScanStateChange(true); // Suspend agent webcam polling
+    }
+    
+    let attempts = 3;
+    let success = false;
+    
+    while (attempts > 0 && !success) {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+        success = true;
+      } catch (err) {
+        console.warn(`Camera access attempt failed (${attempts} left):`, err.message);
+        attempts -= 1;
+        if (attempts > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        } else {
+          console.error("Camera access completely failed:", err);
+        }
       }
-    } catch (err) {
-      console.error("Camera access denied:", err);
     }
   };
 
@@ -119,6 +108,9 @@ export default function Dashboard({
     }
     setShowFaceScan(false);
     setScanType(null);
+    if (onScanStateChange) {
+      onScanStateChange(false); // Resume agent webcam polling
+    }
   };
 
   const executeScan = () => {
@@ -301,14 +293,12 @@ export default function Dashboard({
 
             <div className="relative flex-1 bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center min-h-[300px]">
               {webcamPreview ? (
-                previewStream ? (
+                webcamImage ? (
                   <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
-                    <video 
-                      ref={previewVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
+                    <img 
+                      src={webcamImage} 
                       className="w-full h-full object-cover rounded-2xl transform scale-x-[-1]" 
+                      alt="Local Agent Feed"
                     />
                     <div className="absolute top-3 left-3 bg-emerald-500/80 backdrop-blur-md text-white text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full uppercase shadow flex items-center gap-1 animate-pulse">
                       <span className="w-1.5 h-1.5 rounded-full bg-white" /> Live Video Feed

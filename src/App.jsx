@@ -29,6 +29,7 @@ export default function App() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [webcamPreview, setWebcamPreview] = useState(true);
   const [webcamImage, setWebcamImage] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
   const [productivity, setProductivity] = useState({ score: 0, keystrokes: 0, clicks: 0, app: "unknown" });
   const [wellnessNudge, setWellnessNudge] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
@@ -74,6 +75,42 @@ export default function App() {
       setUser(null);
       setOrg(null);
     }
+  }, [token]);
+
+  // Recover session from local WFH Agent if React localStorage is empty/cleared
+  useEffect(() => {
+    const recoverSession = async () => {
+      if (!token) {
+        try {
+          const statusRes = await agentApi.get("/auth/status");
+          if (statusRes.data && statusRes.data.logged_in && statusRes.data.token) {
+            console.log("Recovering session from local WFH agent...");
+            const recoveredToken = statusRes.data.token;
+            
+            // Fetch employee profile details from `/me` using the recovered token first
+            const userRes = await backendApi.get("/me", {
+              headers: { Authorization: `Bearer ${recoveredToken}` }
+            }).catch(() => null);
+            
+            if (userRes && userRes.data) {
+              const profile = userRes.data;
+              localStorage.setItem("user", JSON.stringify(profile));
+              setUser(profile);
+              
+              const defaultOrg = { id: profile.organization_id, name: "LogDay" };
+              localStorage.setItem("org", JSON.stringify(defaultOrg));
+              setOrg(defaultOrg);
+              
+              // Set token last to trigger session active checks
+              setToken(recoveredToken);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to recover session from agent:", err);
+        }
+      }
+    };
+    recoverSession();
   }, [token]);
 
   // Session Stopwatch Timer
@@ -164,11 +201,12 @@ export default function App() {
             }
           }
 
-          // Fetch webcam preview frame if active
-          if (webcamPreview) {
+          // Fetch webcam preview frame if active and not scanning
+          if (webcamPreview && !isScanning) {
             const webcamRes = await agentApi.get("/webcam").catch(() => null);
             if (webcamRes && webcamRes.data.image_base64) {
-              setWebcamImage(webcamRes.data.image_base64);
+              const img = webcamRes.data.image_base64;
+              setWebcamImage(img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`);
             }
           }
         } else {
@@ -182,7 +220,7 @@ export default function App() {
     fetchStatus();
     statusInterval = setInterval(fetchStatus, 5000);
     return () => clearInterval(statusInterval);
-  }, [webcamPreview, deviceId, session, token]);
+  }, [webcamPreview, deviceId, session, token, isScanning]);
 
   // Poll WFH Alerts unread count
   useEffect(() => {
@@ -272,6 +310,12 @@ export default function App() {
               await startMonitoring(null);
               setSession(null);
               showToast("Your WFH session has been remotely terminated by an administrator.", "error");
+              await backendApi.post(`/api/wfh/commands/${cmd.id}/complete`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+            } else if (cmd.command === "force_logout") {
+              await handleLogout();
+              showToast("Your workspace session has been terminated by an administrator.", "error");
               await backendApi.post(`/api/wfh/commands/${cmd.id}/complete`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
               });
@@ -695,6 +739,7 @@ export default function App() {
           onCheckAgent={checkAgent}
           wellnessNudge={wellnessNudge}
           setWellnessNudge={setWellnessNudge}
+          onScanStateChange={setIsScanning}
         />
       )}
 

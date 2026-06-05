@@ -117,14 +117,7 @@ export default function Layout({
             </div>
           </div>
 
-          {/* Logout Button */}
-          <button 
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-500/15 bg-rose-500/5 hover:bg-rose-500/10 text-rose-400 transition-all text-xs font-semibold"
-          >
-            <LogOut size={14} />
-            Sign Out
-          </button>
+
         </div>
       </aside>
 
