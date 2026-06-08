@@ -27,7 +27,7 @@ export default function App() {
   
   // Monitoring & Telemetry
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [webcamPreview, setWebcamPreview] = useState(true);
+  const [webcamPreview, setWebcamPreview] = useState(false);
   const [webcamImage, setWebcamImage] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [productivity, setProductivity] = useState({ score: 0, keystrokes: 0, clicks: 0, app: "unknown" });
