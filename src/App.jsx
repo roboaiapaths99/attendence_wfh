@@ -169,39 +169,8 @@ export default function App() {
             score: prodInfo.data.score || 0
           }));
 
-          // Dynamic policy based idle warning / auto checkout
-          // Only check idle after a 60-second grace period from check-in
-          // to prevent stale idle counters from before check-in triggering instant checkout
-          if (session) {
-            const checkInStr = session.check_in_time;
-            let graceExpired = true;
-            if (checkInStr) {
-              const ciTime = new Date(typeof checkInStr === "string" && !/([+-]\d{2}:?\d{2}|Z)$/.test(checkInStr) ? checkInStr + "Z" : checkInStr).getTime();
-              graceExpired = (Date.now() - ciTime) > 60000; // 60 second grace
-            }
-            
-            if (graceExpired) {
-              const cachedPolicy = localStorage.getItem("wfh_policy");
-              const policy = cachedPolicy ? JSON.parse(cachedPolicy) : null;
-              if (policy) {
-                const maxIdleMins = policy.max_idle_minutes || 20;
-                const consecutiveIdleSecs = activity.data.consecutive_idle_seconds || 0;
-                const warningThreshold = Math.max(60, (maxIdleMins - 5) * 60);
-                const limitThreshold = maxIdleMins * 60;
-                
-                if (consecutiveIdleSecs >= limitThreshold) {
-                  console.log(`Auto checkout triggered: ${consecutiveIdleSecs}s idle >= limit ${limitThreshold}s`);
-                  triggerAutoCheckout();
-                } else if (consecutiveIdleSecs >= warningThreshold) {
-                  const now = Date.now();
-                  if (now - lastIdleWarningTimeRef.current > 60000) {
-                    showToast(`Inactivity warning: You have been idle for ${Math.floor(consecutiveIdleSecs / 60)} minutes. You will be automatically checked out at ${maxIdleMins} minutes.`, "error");
-                    lastIdleWarningTimeRef.current = now;
-                  }
-                }
-              }
-            }
-          }
+          // Dynamic policy based idle warning / auto checkout disabled as per request
+
 
           // Fetch dynamic hardware device ID if set to default fallback
           if (deviceId === "wfh-device-001") {
@@ -628,26 +597,7 @@ export default function App() {
       console.error("Failed to stop monitoring:", err);
     }
   };
-
-  const triggerAutoCheckout = async () => {
-    try {
-      setLoading(true);
-      showToast("Auto-checkout triggered due to extended inactivity.", "error");
-      await backendApi.post("/api/wfh/checkout", {
-        device_id: deviceId,
-        session_id: session?._id
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      await startMonitoring(null);
-      await checkActiveSession();
-      setMessage("Session auto-closed due to extended idle time.");
-    } catch (err) {
-      console.error("Auto checkout error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // triggerAutoCheckout was removed as inactivity auto-checkout is disabled.
 
   const registerDevice = async () => {
     try {
